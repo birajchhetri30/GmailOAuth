@@ -1,0 +1,4 @@
+https://developers.google.com/gmail/api/quickstart/python
+pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
+Tutorial: https://www.thepythoncode.com/article/use-gmail-api-in-python#Reading_Emails
