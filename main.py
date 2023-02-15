@@ -18,7 +18,7 @@ import shutil
 
 # Request all access (permission to read/send/receive emails, manage the inbox, and more)
 SCOPES = ['https://mail.google.com/']
-our_email = 'birajchhetri3824@gmail.com'
+our_email = ''
 
 
 def search_messages(service, query):
@@ -106,22 +106,26 @@ def parse_parts(service, parts, folder_name, message):
                     f.write(urlsafe_b64decode(data))
             else:
                 # attachment other than a plain text or HTML
-                for part_header in part_headers:
-                    part_header_name = part_header.get("name")
-                    part_header_value = part_header.get("value")
-                    if part_header_name == "Content-Disposition":
-                        if "attachment" in part_header_value:
-                            # we get the attachment ID
-                            # and make another request to get the attachment itself
-                            print("Saving the file:", filename, "size:", get_size_format(file_size))
-                            attachment_id = body.get("attachmentId")
-                            attachment = service.users().messages() \
-                                        .attachments().get(id=attachment_id, userId='me', messageId=message['id']).execute()
-                            data = attachment.get("data")
-                            filepath = os.path.join(folder_name, filename)
-                            if data:
-                                with open(filepath, "wb") as f:
-                                    f.write(urlsafe_b64decode(data))
+                filename = filename.replace(":", ".") + ".jpg"
+                if not filename in os.listdir(folder_name):
+                    for part_header in part_headers:
+                        part_header_name = part_header.get("name")
+                        part_header_value = part_header.get("value")
+                        if part_header_name == "Content-Disposition":
+                            if "attachment" in part_header_value:
+                                # we get the attachment ID
+                                # and make another request to get the attachment itself
+                                print("Saving the file:", filename, "size:", get_size_format(file_size))
+                                attachment_id = body.get("attachmentId")
+                                attachment = service.users().messages() \
+                                            .attachments().get(id=attachment_id, userId='me', messageId=message['id']).execute()
+                                data = attachment.get("data")
+                                if data:
+                                    filepath = os.path.join(folder_name, filename)
+                                    with open(filepath, "wb") as f:
+                                        f.write(urlsafe_b64decode(data))
+                else:
+                    print("File already exists")
 
 
 def read_message(service, message):
@@ -152,58 +156,42 @@ def read_message(service, message):
                 # we print the To address
                 print("To:", value)
             if name.lower() == "subject":
-                # make our boolean True, the email has "subject"
                 has_subject = True
-                # make a directory with the name of the subject
-                folder_name = clean(value)
-                # we will also handle emails with the same subject name
-                folder_counter = 0
-                while os.path.isdir(folder_name):
-                    folder_counter += 1
-                    # we have the same folder name, add a number next to it
-                    if folder_name[-1].isdigit() and folder_name[-2] == "_":
-                        folder_name = f"{folder_name[:-2]}_{folder_counter}"
-                    elif folder_name[-2:].isdigit() and folder_name[-3] == "_":
-                        folder_name = f"{folder_name[:-3]}_{folder_counter}"
-                    else:
-                        folder_name = f"{folder_name}_{folder_counter}"
-                os.mkdir(folder_name)
-                print("Subject:", value)
             if name.lower() == "date":
+                mailDate = value[5:16].replace(" ", "-")
+                mailTime = value[17:-12]
+                folder_name = mailDate
+                if not os.path.isdir(folder_name):
+                    os.mkdir(folder_name)
+                else:
+                    exists = True
                 # we print the date when the message was sent
                 print("Date:", value)
     if not has_subject:
-        # if the email does not have a subject, then make a folder with "email" name
-        # since folders are created based on subjects
-        if not os.path.isdir(folder_name):
-            os.mkdir(folder_name)
+        pass
+
     parse_parts(service, parts, folder_name, message)
     print("="*50)
+
 
 
 def deletedirs():
     dirs = os.listdir()
     name = "INTRUDER_ALERT__"
-    for x in range(1,len(dirs)-7):
+    for x in range(1,len(dirs)-12):
         shutil.rmtree(name+str(x))
 
 
-def displayIntruder():
-    frame = cv2.imread("INTRUDER_ALERT_\intruder.jpg")
-    cv2.imshow("Intruder", frame)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+def main():
+    # get the Gmail API service
+    service = gmail_authenticate()
+    # get emails that match the query you specify
+    results = search_messages(service, "INTRUDER ALERT")
+    print(f"Found {len(results)} results.")
+    # for each email matched, read it (output plain/text to console & save HTML and attachments)
+    for msg in results:
+        read_message(service, msg)
 
+    return True
 
-# get the Gmail API service
-service = gmail_authenticate()
-# get emails that match the query you specify
-results = search_messages(service, "INTRUDER ALERT")
-print(f"Found {len(results)} results.")
-# for each email matched, read it (output plain/text to console & save HTML and attachments)
-for msg in results:
-    read_message(service, msg)
-
-
-deletedirs()
-displayIntruder()
+main()
