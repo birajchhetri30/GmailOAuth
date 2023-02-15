@@ -193,5 +193,3 @@ def main():
         read_message(service, msg)
 
     return True
-
-main()
